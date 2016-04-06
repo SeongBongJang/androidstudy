@@ -59,24 +59,26 @@ public class MainActivity extends AppCompatActivity {
         /**
          * Sending and Receiving Network Requests
          * Application interceptors
+         *  enqeqe를 호출할때만..?정도..
          *      Don't need to worry about intermediate responses like redirects and retries.
          *      Are always invoked once, even if the HTTP response is served from the cache.
          *      Observe the application's original intent. Unconcerned with OkHttp-injected headers like If-None-Match.
          *      Permitted to short-circuit and not call Chain.proceed().
          *      Permitted to retry and make multiple calls to Chain.proceed().
          * Network Interceptors
+         * 매번 통신 할 떄 마다.. url error로 인한 (300)일때 처럼...그때 처리
          *      Able to operate on intermediate responses like redirects and retries.
          *      Not invoked for cached responses that short-circuit the network.
          *      Observe the data just as it will be transmitted over the network.
          *      Access to the Connection that carries the request.
          */
-        client = new OkHttpClient.Builder()
+        client = new OkHttpClient.Builder()     //intercepter를 add 하면 우선순위를 어떻게 할 것인가
                 .addInterceptor(new Interceptor() {
                     @Override
                     public Response intercept(Chain chain) throws IOException {
                         Request request = chain.request();
                         Log.d("intercepter",request.toString());
-                        okhttp3.Response response = chain.proceed(request);
+                        okhttp3.Response response = chain.proceed(request);//여기서 다시 intercepter를 call. recursive, 즉 단계별로 리턴을 안 돌려주고 쭉 진행한다.
                         return response;
                     }
                 })
@@ -127,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
          * using the enqueue() method,
          * and passing an anonymous Callback object that implements both onFailure() and onResponse()
          */
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
@@ -134,6 +137,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
             //Processing JSON data
+            //!!중요한점
+            //callback executer가 main으로 떨어지지 않는다. retrofit은 알아서 main으로 떨어져서 바꿀수 있게 해준다.
             @Override
             public void onResponse(Call call, final Response response) throws IOException {
                 if(!response.isSuccessful()){
@@ -152,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
                      */
                     Gson gson = new Gson();
                     Type type = new TypeToken<List<ResponseItem>>(){}.getType();
-                    final List<ResponseItem> contributors = gson.fromJson(response.body().charStream(),type);
+                    final List<ResponseItem> contributors = gson.fromJson(response.body().charStream(),type);//Gsonconverter가 하는 것과 같다.
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {
